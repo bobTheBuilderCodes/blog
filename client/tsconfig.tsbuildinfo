@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/publicationidentity.tsx","./src/components.tsx","./src/main.tsx","./src/pages.tsx","./src/studio.tsx","./src/types.ts","./src/vite-env.d.ts","./src/context/audiocontext.tsx","./src/lib/api.ts","./src/lib/utils.ts"],"version":"5.9.3"}
