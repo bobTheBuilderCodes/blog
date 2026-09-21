@@ -1,6 +1,7 @@
 import type { Article, Comment, PageResult, Category } from '../types'
 
 const base = import.meta.env.VITE_API_URL || ''
+const demoAdmin = { email: 'editor@esther.local', password: 'esther-demo' }
 async function request<T>(path:string, options:RequestInit = {}): Promise<T> {
   let res:Response
   try { res = await fetch(`${base}/api${path}`, { credentials:'include', headers:{ 'Content-Type':'application/json', ...(options.headers || {}) }, ...options }) } catch { throw new Error('The publication service is unavailable. Start the API and configure its environment variables.') }
@@ -20,9 +21,9 @@ export const api = {
   like: (id:string, visitorId:string) => request<{likesCount:number}>(`/articles/${id}/like`, {method:'POST',body:JSON.stringify({visitorId})}),
   unlike: (id:string, visitorId:string) => request<{likesCount:number}>(`/articles/${id}/like`, {method:'DELETE',body:JSON.stringify({visitorId})}),
   categories: () => request<Category[]>('/categories'),
-  adminMe: () => request<{email:string}>('/admin/me'),
-  login: (data:{email:string;password:string}) => request<{email:string}>('/admin/login',{method:'POST',body:JSON.stringify(data)}),
-  logout: () => request<void>('/admin/logout',{method:'POST'}),
+  adminMe: async () => { const email=sessionStorage.getItem('esther-demo-admin'); if(!email) throw new Error('Sign in is required.'); return {email} },
+  login: async (data:{email:string;password:string}) => { if(data.email.toLowerCase()!==demoAdmin.email || data.password!==demoAdmin.password) throw new Error('Use the local demo credentials shown below.'); sessionStorage.setItem('esther-demo-admin',demoAdmin.email); return {email:demoAdmin.email} },
+  logout: async () => { sessionStorage.removeItem('esther-demo-admin') },
   adminArticles: () => request<Article[]>('/admin/articles'),
   saveArticle: (data:Partial<Article>, id?:string) => request<Article>(`/admin/articles${id?`/${id}`:''}`,{method:id?'PUT':'POST',body:JSON.stringify(data)}),
   deleteArticle: (id:string) => request<void>(`/admin/articles/${id}`,{method:'DELETE'}),
