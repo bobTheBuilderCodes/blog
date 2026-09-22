@@ -1,5 +1,9 @@
-import 'dotenv/config'
+import dotenv from 'dotenv'
 import mongoose from 'mongoose'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+dotenv.config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../../.env') })
 
 export const env = {
   port: Number(process.env.PORT || 4000),
@@ -9,6 +13,7 @@ export const env = {
   cookieSecret: process.env.COOKIE_SECRET || '',
   adminEmail: process.env.ADMIN_EMAIL || '',
   adminPassword: process.env.ADMIN_PASSWORD || '',
+  demoMode: process.env.ADMIN_DEMO_MODE === 'true',
   mediaProvider: process.env.MEDIA_PROVIDER || 'cloudinary',
   cloudinary: { cloudName: process.env.CLOUDINARY_CLOUD_NAME || '', apiKey: process.env.CLOUDINARY_API_KEY || '', apiSecret: process.env.CLOUDINARY_API_SECRET || '' },
   production: process.env.NODE_ENV === 'production'

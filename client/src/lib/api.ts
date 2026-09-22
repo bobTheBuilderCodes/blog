@@ -1,7 +1,9 @@
 import type { Article, Comment, PageResult, Category } from '../types'
 
-const base = import.meta.env.VITE_API_URL || ''
-const demoAdmin = { email: 'editor@esther.local', password: 'esther-demo' }
+// Local development talks directly to the API so the client remains functional
+// even when Vite was started before its optional proxy environment was loaded.
+const base = import.meta.env.VITE_API_URL || 'http://127.0.0.1:4000'
+const demoAdmin = { email: 'bob.esther@gmail.com', password: 'bobandesther' }
 async function request<T>(path:string, options:RequestInit = {}): Promise<T> {
   let res:Response
   try { res = await fetch(`${base}/api${path}`, { credentials:'include', headers:{ 'Content-Type':'application/json', ...(options.headers || {}) }, ...options }) } catch { throw new Error('The publication service is unavailable. Start the API and configure its environment variables.') }
@@ -13,7 +15,7 @@ async function request<T>(path:string, options:RequestInit = {}): Promise<T> {
 }
 export const api = {
   articles: (params = '') => request<PageResult<Article>>(`/articles${params}`),
-  article: (slug:string) => request<Article>(`/articles/${slug}`),
+  article: (slug:string) => request<Article>(`/articles/${slug}`).then(article=>({...article,coverImage:article.coverImage||{url:'',alt:''}})),
   search: (q:string) => request<PageResult<Article>>(`/articles/search?q=${encodeURIComponent(q)}`),
   related: (id:string) => request<Article[]>(`/articles/${id}/related`),
   comments: (id:string) => request<Comment[]>(`/articles/${id}/comments`),
