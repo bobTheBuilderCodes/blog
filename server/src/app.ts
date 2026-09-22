@@ -14,7 +14,9 @@ import { articleSchema, commentSchema, loginSchema, visitorSchema } from './vali
 import { asyncRoute, cleanContent, cookieOptions, hash, readingTime, requireAdmin } from './utils.js'
 
 const app=express();
-app.set('trust proxy',1);app.use(helmet({crossOriginResourcePolicy:{policy:'cross-origin'}}));app.use(cors({origin:env.clientUrl||false,credentials:Boolean(env.clientUrl)}));app.use(express.json({limit:'700kb'}));app.use(cookieParser(env.cookieSecret));
+const localOrigin=/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/
+const corsOrigin=(origin:string|undefined,callback:(error:Error|null,allow?:boolean)=>void)=>{const normalized=origin?.replace(/\/$/,'');if(!origin||env.clientUrls.includes(normalized||'')||(!env.production&&localOrigin.test(origin)))return callback(null,true);callback(new Error(`CORS origin is not allowed: ${origin}`))}
+app.set('trust proxy',1);app.use(helmet({crossOriginResourcePolicy:{policy:'cross-origin'}}));app.use(cors({origin:corsOrigin,credentials:true,methods:['GET','HEAD','PUT','PATCH','POST','DELETE','OPTIONS'],allowedHeaders:['Content-Type'],maxAge:86400}));app.use(express.json({limit:'700kb'}));app.use(cookieParser(env.cookieSecret));
 const limiter=(windowMs:number,max:number)=>rateLimit({windowMs,max,standardHeaders:true,legacyHeaders:false,message:{message:'Too many requests. Please try again shortly.'}})
 const routeValue=(value:string|string[])=>Array.isArray(value)?value[0]:value
 const id=(value:string|string[])=>Types.ObjectId.isValid(routeValue(value))
