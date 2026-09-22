@@ -1,8 +1,8 @@
 import type { Article, Comment, PageResult, Category } from '../types'
 
-// Local development talks directly to the API so the client remains functional
-// even when Vite was started before its optional proxy environment was loaded.
-const base = import.meta.env.VITE_API_URL || 'http://127.0.0.1:4000'
+// Production uses the hosted service. Set VITE_API_URL only when deliberately
+// pointing a local build at a different API.
+const base = import.meta.env.VITE_API_URL || 'https://blog-server-1nif.onrender.com'
 const demoAdmin = { email: 'bob.esther@gmail.com', password: 'bobandesther' }
 async function request<T>(path:string, options:RequestInit = {}): Promise<T> {
   let res:Response
