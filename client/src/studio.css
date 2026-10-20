@@ -67,6 +67,15 @@
 .editor-check { display: flex; gap: 8px; align-items: center; font-size: .82rem; }
 .editor-check input { width: 18px; height: 18px; accent-color: #8b1e1e; }
 .editor-notice { color: #8b1e1e; font-size: .82rem; margin: 18px 0 0; }
+.editor-grid + .editor-actions { justify-content: flex-end; margin: 24px 0 0; padding: 18px 0 calc(18px + env(safe-area-inset-bottom)); border-top: 1px solid #d8d5ce; }
+.studio-composing .studio-nav { display: none!important; }
+.studio-composing .studio-app { padding-bottom: 0!important; }
+.studio-upload-label { display: grid; gap: 7px; color: #161616; font-size: .73rem; font-weight: 700; letter-spacing: .04em; }
+.studio-cover-upload { width: 100%; color: #555550; font: inherit; }
+.studio-cover-upload::file-selector-button { margin-right: 10px; border: 1px solid #161616; background: #161616; color: #fff; padding: 8px 10px; font: inherit; font-size: .7rem; font-weight: 700; cursor: pointer; }
+.studio-upload-status { min-height: 1.1em; color: #8b1e1e; font-size: .72rem; font-weight: 400; letter-spacing: 0; }
+.editor-notice[role="status"] { position: fixed; z-index: 80; right: 20px; bottom: 20px; max-width: min(360px,calc(100vw - 40px)); padding: 13px 16px; border: 1px solid #d8d5ce; background: #161616; color: #fff; box-shadow: 0 12px 32px rgba(0,0,0,.2); animation: studio-toast 3.2s ease forwards; }
+@keyframes studio-toast { 0%,75% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(8px); visibility: hidden; } }
 .rich-editor { overflow: hidden; border: 1px solid #d8d5ce; border-radius: 4px; background: #fff; }
 .rich-editor__toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; border-bottom: 1px solid #d8d5ce; background: #f8f6f1; }
 .rich-editor__toolbar button { min-height: 32px; border: 1px solid transparent; border-radius: 3px; background: transparent; color: #161616; padding: 0 9px; font-size: .75rem; font-weight: 700; }
