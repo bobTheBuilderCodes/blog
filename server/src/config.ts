@@ -9,7 +9,7 @@ export const env = {
   port: Number(process.env.PORT || 4000),
   mongoUri: process.env.MONGODB_URI || '',
   clientUrl: process.env.CLIENT_URL || '',
-  clientUrls: [process.env.CLIENT_URL, ...(process.env.CLIENT_URLS || '').split(',')].map(url=>url?.trim().replace(/\/$/,'')).filter(Boolean) as string[],
+  clientUrls: [process.env.CLIENT_URL, ...(process.env.CLIENT_URLS || '').split(','), 'https://blog-client-b07o.onrender.com'].map(url=>url?.trim().replace(/\/$/,'')).filter(Boolean) as string[],
   siteUrl: process.env.PUBLIC_SITE_URL || process.env.CLIENT_URL || '',
   cookieSecret: process.env.COOKIE_SECRET || '',
   adminEmail: process.env.ADMIN_EMAIL || '',

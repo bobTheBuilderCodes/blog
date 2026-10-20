@@ -6,7 +6,9 @@ const base = import.meta.env.VITE_API_URL || 'https://blog-server-1nif.onrender.
 const demoAdmin = { email: 'bob.esther@gmail.com', password: 'bobandesther' }
 async function request<T>(path:string, options:RequestInit = {}): Promise<T> {
   let res:Response
-  try { res = await fetch(`${base}/api${path}`, { credentials:'include', headers:{ 'Content-Type':'application/json', ...(options.headers || {}) }, ...options }) } catch { throw new Error('The publication service is unavailable. Start the API and configure its environment variables.') }
+  const hasJsonBody=Boolean(options.body)&&!(options.body instanceof FormData)
+  const headers={...(hasJsonBody?{'Content-Type':'application/json'}:{}),...(options.headers||{})}
+  try { res = await fetch(`${base}/api${path}`, { credentials:'include', headers, ...options }) } catch { throw new Error('The publication service could not be reached. Check the hosted API URL and its CORS configuration.') }
   const isJson=res.headers.get('content-type')?.includes('application/json')
   const body = isJson ? await res.json().catch(() => ({ message:'Something went wrong.' })) : { message:'The publication service returned an invalid response. Check VITE_API_URL or the development API proxy.' }
   if (!isJson) throw new Error(body.message)
