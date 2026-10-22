@@ -127,6 +127,7 @@ function RichTextEditor({
         suppressContentEditableWarning
         role="textbox"
         aria-multiline="true"
+        data-placeholder="My womannnnn, share what's on your mind..."
         onInput={update}
       />
     </div>
@@ -444,9 +445,8 @@ export function StudioLayout() {
           <Link className="display studio-wordmark" to="/studio">
             ESTHER <span>STUDIO</span>
           </Link>
-          <button onClick={quit} className="studio-logout">
-            <LogOut size={16} />
-            <span>Log out</span>
+          <button onClick={quit} className="studio-logout" aria-label="Log out" title="Log out">
+            <LogOut size={18} />
           </button>
         </div>
       </header>
@@ -470,9 +470,7 @@ export function StudioLayout() {
         </aside>
         <main className="studio-content">
           <Outlet />
-          <RichTextEnhancer />
           <PublishedLinkAction />
-          <StudioEditorExperience />
         </main>
       </div>
     </div>
@@ -918,10 +916,6 @@ export function ArticleEditor() {
           </button>
         </div>
       </div>
-      <p className="editor-required-note">
-        <strong>Required:</strong> Title, slug, excerpt, content, and category.
-        Image fields are optional.
-      </p>
       <div className="editor-grid" style={{ display: "grid", gap: 22 }}>
         <div style={{ display: "grid", gap: 16, alignContent: "start" }}>
           <label className="eyebrow">
@@ -938,15 +932,6 @@ export function ArticleEditor() {
             />
           </label>
           <label className="eyebrow">
-            Slug <span aria-hidden="true">*</span>
-            <input
-              required
-              className="studio-input"
-              value={article.slug}
-              onChange={(e) => update("slug", slugify(e.target.value))}
-            />
-          </label>
-          <label className="eyebrow">
             Excerpt <span aria-hidden="true">*</span>
             <textarea
               required
@@ -958,20 +943,13 @@ export function ArticleEditor() {
               onChange={(e) => update("excerpt", e.target.value)}
             />
           </label>
-          <label className="eyebrow">
+          <div className="editor-content">
             Content <span aria-hidden="true">*</span>{" "}
-            <span style={{ color: "#6b6b67", fontWeight: 400 }}>
-              (safe HTML supported)
-            </span>
-            <textarea
-              required
-              rows={18}
-              className="studio-input"
-              value={article.content}
-              onChange={(e) => update("content", e.target.value)}
-              style={{ fontFamily: "monospace", fontSize: 12 }}
+            <RichTextEditor
+              value={article.content || ""}
+              onChange={(content) => update("content", content)}
             />
-          </label>
+          </div>
         </div>
         <aside className="editor-sidebar">
           <label className="eyebrow">
