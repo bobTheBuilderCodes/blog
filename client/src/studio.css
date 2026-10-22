@@ -80,6 +80,8 @@
 .rich-editor__toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; border-bottom: 1px solid #d8d5ce; background: #f8f6f1; }
 .rich-editor__toolbar button { min-height: 32px; border: 1px solid transparent; border-radius: 3px; background: transparent; color: #161616; padding: 0 9px; font-size: .75rem; font-weight: 700; }
 .rich-editor__toolbar button:hover { border-color: #d8d5ce; background: #fff; }
+.rich-editor__toolbar button[title="H3"] { font-family: 'Playfair Display', Georgia, serif; }
+.rich-editor__toolbar button[title="1. List"] { min-width: 52px; }
 .rich-editor__toolbar button:focus-visible { outline: 2px solid #8b1e1e; outline-offset: 1px; }
 .rich-editor__canvas { min-height: 380px; padding: 18px; outline: 0; background: #fff; color: #161616; direction: ltr; unicode-bidi: plaintext; text-align: left; text-transform: none; font-family: 'DM Sans', sans-serif; font-size: 1rem; line-height: 1.7; }
 .rich-editor__canvas:empty::before { content: attr(data-placeholder); color: #8a8780; pointer-events: none; }
