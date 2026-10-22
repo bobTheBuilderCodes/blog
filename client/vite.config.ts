@@ -11,7 +11,7 @@ export default defineConfig({
       manifest: {
         name: 'ESTHER — Personal Editorial',
         short_name: 'ESTHER',
-        description: 'Notes for a considered life.',
+        description: 'The bleeding ink.',
         theme_color: '#f8f6f1',
         background_color: '#f8f6f1',
         display: 'standalone',

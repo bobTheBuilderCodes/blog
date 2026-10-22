@@ -1,33 +1,1271 @@
 // @ts-nocheck
-import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink, Outlet, useNavigate, useParams } from 'react-router-dom'
-import { ChevronRight, Eye, FilePenLine, FileText, Heart, LayoutDashboard, LogOut, MessageSquare, Plus, Settings, Trash2 } from 'lucide-react'
-import { api } from './lib/api'
-import { readingTime, slugify } from './lib/utils'
-import type { Article, Comment } from './types'
+import { useEffect, useRef, useState } from "react";
+import {
+  Link,
+  NavLink,
+  Outlet,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+import {
+  ChevronRight,
+  Eye,
+  FilePenLine,
+  FileText,
+  Heart,
+  LayoutDashboard,
+  LogOut,
+  MessageSquare,
+  Plus,
+  Settings,
+  Trash2,
+} from "lucide-react";
+import { api } from "./lib/api";
+import { readingTime, slugify } from "./lib/utils";
+import type { Article, Comment } from "./types";
 
-function useStudioAuth(){const [ready,setReady]=useState(false);const [email,setEmail]=useState('');useEffect(()=>{const check=()=>api.adminMe().then(x=>setEmail(x.email)).catch(()=>setEmail('')).finally(()=>setReady(true));check();window.addEventListener('esther-auth-change',check);return()=>window.removeEventListener('esther-auth-change',check)},[]);return {ready,email,setEmail}}
-function RichTextEditor({value,onChange}:{value:string;onChange:(html:string)=>void}){const editor=useRef<HTMLDivElement>(null);useEffect(()=>{if(editor.current&&editor.current.innerHTML!==value)editor.current.innerHTML=value},[value]);const update=()=>onChange(editor.current?.innerHTML||'');const format=(command:string,arg?:string)=>{editor.current?.focus();document.execCommand(command,false,arg);update()};const link=()=>{const url=window.prompt('Paste a link URL');if(url)format('createLink',url)};return <div className="rich-editor"><div className="rich-editor__toolbar" role="toolbar" aria-label="Text formatting"><button type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>format('bold')} title="Bold"><strong>B</strong><span className="sr-only">Bold</span></button><button type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>format('italic')} title="Italic"><em>I</em><span className="sr-only">Italic</span></button><button type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>format('formatBlock','h2')} title="Heading">H2<span className="sr-only">Heading</span></button><button type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>format('formatBlock','blockquote')} title="Quote">❝<span className="sr-only">Quote</span></button><button type="button" onMouseDown={e=>e.preventDefault()} onClick={()=>format('insertUnorderedList')} title="Bulleted list">• List<span className="sr-only">Bulleted list</span></button><button type="button" onMouseDown={e=>e.preventDefault()} onClick={link} title="Add link">Link<span className="sr-only">Add link</span></button></div><div ref={editor} className="rich-editor__canvas" contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" onInput={update}/></div>}
-function RichTextEnhancer(){useEffect(()=>{const mount=()=>{const source=document.querySelector<HTMLTextAreaElement>('.studio-content textarea[rows="18"]');if(!source||source.dataset.richText)return;source.dataset.richText='true';const host=document.createElement('div');host.className='rich-editor rich-editor--mounted';const toolbar=document.createElement('div');toolbar.className='rich-editor__toolbar';const canvas=document.createElement('div');canvas.className='rich-editor__canvas';canvas.contentEditable='true';canvas.dir='ltr';canvas.spellcheck=true;canvas.setAttribute('data-placeholder',"My womannnnn, share what's on your mind...");canvas.innerHTML=source.value;const sync=()=>{const set=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value')?.set;set?.call(source,canvas.innerHTML);source.dispatchEvent(new Event('input',{bubbles:true}))};const keepCaretAtEnd=()=>requestAnimationFrame(()=>{canvas.focus();const selection=window.getSelection();selection?.selectAllChildren(canvas);selection?.collapseToEnd()});[['B','bold'],['I','italic'],['H2','formatBlock:h2'],['❝','formatBlock:blockquote'],['• List','insertUnorderedList'],['Link','link']].forEach(([label,action])=>{const button=document.createElement('button');button.type='button';button.textContent=label;button.onmousedown=e=>e.preventDefault();button.onclick=()=>{canvas.focus();if(action==='link'){const url=window.prompt('Paste a link URL');if(url)document.execCommand('createLink',false,url)}else{const [command,arg]=action.split(':');document.execCommand(command,false,arg)}sync();keepCaretAtEnd()};toolbar.append(button)});canvas.oninput=()=>{sync();keepCaretAtEnd()};host.append(toolbar,canvas);source.before(host);source.style.display='none'};mount();const observer=new MutationObserver(mount);observer.observe(document.body,{childList:true,subtree:true});return()=>observer.disconnect()},[]);return null}
-function PublishedLinkAction(){useEffect(()=>{const mount=async()=>{const match=location.pathname.match(/^\/studio\/articles\/([^/]+)$/);const target=document.querySelector('.article-detail-heading');if(!match||!target||target.querySelector('[data-public-link]'))return;const article=(await api.adminArticles()).find(item=>item._id===match[1]);if(!article||article.status!=='published')return;const action=document.createElement('a');action.dataset.publicLink='true';action.className='btn btn-outline studio-public-link';action.href=`/blog/${article.slug}`;action.target='_blank';action.rel='noreferrer';action.textContent='Open public post';target.append(action);const copy=document.createElement('button');copy.type='button';copy.className='btn btn-outline studio-public-link';copy.textContent='Copy public link';copy.onclick=async()=>{await navigator.clipboard.writeText(new URL(action.href,location.origin).href);copy.textContent='Link copied';setTimeout(()=>copy.textContent='Copy public link',1600)};target.append(copy)};void mount();const observer=new MutationObserver(()=>void mount());observer.observe(document.body,{childList:true,subtree:true});return()=>observer.disconnect()},[]);return null}
-function StudioEditorExperience(){useEffect(()=>{const enhance=()=>{const creating=location.pathname==='/studio/articles/new';document.documentElement.classList.toggle('studio-composing',creating);if(!creating)return;const grid=document.querySelector('.editor-grid');const actions=document.querySelector('.editor-actions');if(grid&&actions&&!actions.dataset.bottom){actions.dataset.bottom='true';grid.after(actions)}const imageFields=document.querySelector('.editor-image-fields');if(imageFields&&!imageFields.querySelector('[data-cover-upload]')){const input=document.createElement('input');input.type='file';input.accept='image/jpeg,image/png,image/webp,image/avif';input.dataset.coverUpload='true';input.className='studio-cover-upload';const status=document.createElement('small');status.className='studio-upload-status';input.onchange=async()=>{const file=input.files?.[0];if(!file)return;status.textContent='Uploading image…';try{const result=await api.upload(file);const url=imageFields.querySelector<HTMLInputElement>('input[type="url"]');if(!url)throw new Error('Cover image field was not found.');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')?.set?.call(url,result.url);url.dispatchEvent(new Event('input',{bubbles:true}));status.textContent='Image uploaded.'}catch(error){status.textContent=error instanceof Error?error.message:'Image upload failed.'}};const label=document.createElement('label');label.className='studio-upload-label';label.textContent='Upload from device';label.append(input,status);imageFields.prepend(label)}};enhance();const observer=new MutationObserver(enhance);observer.observe(document.body,{childList:true,subtree:true});return()=>{observer.disconnect();document.documentElement.classList.remove('studio-composing')}},[]);return null}
-export function EditorEnhancements(){useEffect(()=>{const mount=()=>{const toolbar=document.querySelector<HTMLElement>('.rich-editor--mounted .rich-editor__toolbar');const canvas=document.querySelector<HTMLElement>('.rich-editor--mounted .rich-editor__canvas');if(!toolbar||!canvas||toolbar.dataset.extended)return;toolbar.dataset.extended='true';const sync=()=>{const source=document.querySelector<HTMLTextAreaElement>('.studio-content textarea[rows="18"]');if(!source)return;Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value')?.set?.call(source,canvas.innerHTML);source.dispatchEvent(new Event('input',{bubbles:true}))};[['H3','formatBlock:h3'],['1. List','insertOrderedList'],['↶','undo'],['↷','redo'],['Clear','removeFormat']].forEach(([label,action])=>{const button=document.createElement('button');button.type='button';button.textContent=label;button.title=label;button.onmousedown=event=>event.preventDefault();button.onclick=()=>{canvas.focus();const [command,arg]=action.split(':');document.execCommand(command,false,arg);sync()};toolbar.append(button)})};mount();const observer=new MutationObserver(mount);observer.observe(document.body,{childList:true,subtree:true});return()=>observer.disconnect()},[]);return null}
-export function StudioDashboardGreeting(){useEffect(()=>{const mount=()=>{if(location.pathname!=='/studio')return;const heading=document.querySelector<HTMLElement>('.studio-content .fade > h1.display');if(!heading)return;const hour=new Date().getHours();heading.textContent=hour<12?'Good morning.':hour<18?'Good afternoon.':'Good evening.'};mount();addEventListener('popstate',mount);return()=>removeEventListener('popstate',mount)},[]);return null}
-export function ArticleDeleteAction(){useEffect(()=>{const mount=()=>{const match=location.pathname.match(/^\/studio\/articles\/([^/]+)$/);const heading=document.querySelector<HTMLElement>('.article-detail-heading');if(!match||!heading||heading.querySelector('[data-delete-article]'))return;const button=document.createElement('button');button.type='button';button.dataset.deleteArticle='true';button.className='btn btn-danger studio-delete-article';button.textContent='Delete';button.onclick=async()=>{if(!confirm('Delete this article permanently? Its comments and likes will also be removed.'))return;button.disabled=true;button.textContent='Deleting…';try{await api.deleteArticle(match[1]);location.assign('/studio/articles')}catch(error){button.disabled=false;button.textContent=error instanceof Error?error.message:'Could not delete this article.'}};heading.append(button)};mount();const observer=new MutationObserver(mount);observer.observe(document.body,{childList:true,subtree:true});return()=>observer.disconnect()},[]);return null}
-const studioNav=[
- {to:'/studio',label:'Home',icon:LayoutDashboard,end:true},
- {to:'/studio/articles',label:'Articles',icon:FileText},
- {to:'/studio/settings',label:'Settings',icon:Settings}
-]
-export function StudioLayout(){const {ready,email,setEmail}=useStudioAuth();const nav=useNavigate();if(!ready)return <div className="studio-loading">Loading studio…</div>;if(!email)return <NavigateLogin/>;const quit=async()=>{await api.logout();setEmail('');nav('/studio')};return <div className="studio-app"><header className="studio-header"><div className="studio-header__inner"><Link className="display studio-wordmark" to="/studio">ESTHER <span>STUDIO</span></Link><button onClick={quit} className="studio-logout"><LogOut size={16}/><span>Log out</span></button></div></header><div className="studio-shell"><aside className="studio-nav"><nav aria-label="Studio navigation">{studioNav.map(({to,label,icon:Icon,end})=><NavLink key={to} end={end} to={to} className={({isActive})=>`studio-tab${isActive?' studio-tab--active':''}`}><Icon strokeWidth={1.8}/><span>{label}</span></NavLink>)}</nav></aside><main className="studio-content"><Outlet/><RichTextEnhancer/><PublishedLinkAction/><StudioEditorExperience/></main></div></div>}
-function NavigateLogin(){return <Login/>}
-export function Login(){const nav=useNavigate();const [data,setData]=useState({email:'bob.esther@gmail.com',password:'bobandesther'});const [error,setError]=useState('');const submit=async(e:React.FormEvent)=>{e.preventDefault();try{await api.login(data);nav('/studio',{replace:true})}catch(e){setError(e instanceof Error?e.message:'Could not sign in')}};return <main style={{minHeight:'100vh',display:'grid',placeItems:'center',padding:20,background:'#efebe3'}}><form onSubmit={submit} style={{background:'#fff',padding:28,width:'min(100%,400px)',boxShadow:'0 12px 30px #0001'}}><Link to="/" className="display" style={{fontSize:'1.6rem',fontWeight:800}}>ESTHER</Link><h1 className="display" style={{fontSize:'2.2rem',margin:'36px 0 8px'}}>Welcome back.</h1><p style={{fontSize:13,color:'#6b6b67',marginBottom:24}}>Sign in to the editorial studio.</p><label className="eyebrow">Email<input type="email" required className="studio-input" style={{marginTop:7}} value={data.email} onChange={e=>setData({...data,email:e.target.value})}/></label><label className="eyebrow" style={{display:'block',marginTop:16}}>Password<input type="password" required className="studio-input" style={{marginTop:7}} value={data.password} onChange={e=>setData({...data,password:e.target.value})}/></label>{error&&<p style={{color:'#8b1e1e',fontSize:12}}>{error}</p>}<button className="btn" style={{width:'100%',marginTop:24}}>SIGN IN</button><p style={{fontSize:11,lineHeight:1.6,color:'#6b6b67',margin:'16px 0 0'}}>Development login: bob.esther@gmail.com · bobandesther</p></form></main>}
-export function StudioDashboard(){const [articles,setArticles]=useState<Article[]>([]);const [comments,setComments]=useState<Comment[]>([]);useEffect(()=>{api.adminArticles().then(setArticles).catch(()=>{});api.adminComments().then(setComments).catch(()=>{})},[]);const published=articles.filter(a=>a.status==='published');return <div className="fade"><div className="eyebrow">Editorial desk</div><h1 className="display" style={{fontSize:'clamp(2.4rem,6vw,4rem)',margin:'6px 0 26px'}}>Good morning.</h1><div className="metrics" style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10}}>{[['Articles',articles.length],['Published',published.length],['Drafts',articles.length-published.length],['Comments',comments.length],['Likes',articles.reduce((n,a)=>n+a.likesCount,0)]].map(([label,value])=><div key={String(label)} style={{background:'#fff',padding:'20px 15px'}}><strong className="display" style={{fontSize:'2rem'}}>{value}</strong><div className="eyebrow" style={{color:'#6b6b67'}}>{label}</div></div>)}</div><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:42}}><h2 className="display" style={{fontSize:'1.8rem',margin:0}}>Recent articles</h2><Link to="/studio/articles/new" className="btn" style={{display:'flex',alignItems:'center',gap:5}}><Plus size={15}/> NEW</Link></div><div style={{marginTop:14,borderTop:'1px solid #d8d5ce'}}>{articles.slice(0,5).map(a=><Link key={a._id} to={`/studio/articles/${a._id}`} style={{display:'flex',justifyContent:'space-between',gap:12,padding:'14px 0',borderBottom:'1px solid #d8d5ce'}}><span>{a.title}<small style={{display:'block',color:'#6b6b67'}}>{a.status} · {a.readingTime} min read</small></span><span style={{fontSize:11}}>{a.likesCount} likes</span></Link>)}</div></div>}
-export function StudioArticles(){const [articles,setArticles]=useState<Article[]>([]);const [query,setQuery]=useState('');useEffect(()=>{api.adminArticles().then(setArticles).catch(()=>{})},[]);const visible=articles.filter(a=>a.title.toLowerCase().includes(query.toLowerCase()));return <div className="fade"><div className="studio-page-heading"><div><div className="eyebrow">Publishing desk</div><h1 className="display">Articles</h1></div><Link to="/studio/articles/new" className="btn"><Plus size={15}/> NEW STORY</Link></div><label className="studio-search"><span className="eyebrow">Find a story</span><input className="studio-input" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search your articles"/></label><div className="article-list">{visible.length?visible.map(a=><Link key={a._id} to={`/studio/articles/${a._id}`} className="article-row"><div className="article-row__image">{a.coverImage?.url&&<img src={a.coverImage.url} alt=""/>}</div><div className="article-row__body"><span className="eyebrow">{a.status}</span><strong className="display">{a.title}</strong><small>{a.category} · {a.readingTime} min read · Updated {new Date(a.updatedAt).toLocaleDateString()}</small><span className="article-row__engagement"><Heart size={13}/>{a.likesCount} <MessageSquare size={13}/>{a.commentsCount}</span></div><ChevronRight className="article-row__arrow" size={18}/></Link>):<div className="studio-empty">No articles match that search.</div>}</div></div>}
-export function StudioArticleDetail(){const {id=''}=useParams();const [article,setArticle]=useState<Article>();const [comments,setComments]=useState<Comment[]>([]);useEffect(()=>{api.adminArticles().then(items=>setArticle(items.find(item=>item._id===id))).catch(()=>{});api.adminComments().then(items=>setComments(items.filter(item=>item.articleId===id))).catch(()=>{})},[id]);if(!article)return <div className="studio-empty">Loading article details…</div>;return <div className="fade"><Link to="/studio/articles" className="studio-back">← All articles</Link><div className="article-detail-heading"><div><span className="eyebrow">{article.status} · {article.category}</span><h1 className="display">{article.title}</h1></div><Link to={`/studio/articles/${article._id}/edit`} className="btn"><FilePenLine size={15}/> Edit</Link></div><div className="article-insights"><div><Heart size={17}/><strong>{article.likesCount}</strong><span>Likes</span></div><div><MessageSquare size={17}/><strong>{article.commentsCount}</strong><span>Comments</span></div><div><Eye size={17}/><strong>{article.viewsCount||0}</strong><span>Views</span></div></div><article className="studio-article-preview"><div className="eyebrow">Article preview</div>{article.coverImage?.url&&<img className="studio-article-preview__image" src={article.coverImage.url} alt={article.coverImage.alt||''}/>}<p className="studio-article-preview__excerpt">{article.excerpt}</p><div className="article-copy" dangerouslySetInnerHTML={{__html:article.content}}/></article><section className="article-detail-section"><div className="eyebrow">Comments</div><h2 className="display">Reader conversation</h2>{comments.length?comments.map(comment=><div className="detail-comment" key={comment._id}><div><strong>{comment.name}</strong><small>{new Date(comment.createdAt).toLocaleDateString()} · {comment.status}</small></div><p>{comment.content}</p></div>):<div className="studio-empty">There are no comments on this article yet.</div>}</section></div>}
-const empty:Partial<Article>={title:'',slug:'',excerpt:'',content:'',category:'Ideas',tags:[],coverImage:{url:'',alt:''},featured:false,status:'draft',author:{name:'Elin Hayes'}}
-export function ArticleEditor(){const {id}=useParams();const nav=useNavigate();const [article,setArticle]=useState<Partial<Article>>(empty);const [loading,setLoading]=useState(Boolean(id));const [notice,setNotice]=useState('');useEffect(()=>{if(!id)return;api.adminArticles().then(all=>{const a=all.find(x=>x._id===id);if(a)setArticle(a);else setNotice('Article was not found.');setLoading(false)}).catch(()=>setLoading(false))},[id]);const update=(key:string,value:unknown)=>setArticle(p=>({...p,[key]:value}));const required=[['Title',article.title?.trim().length>=3],['Slug',Boolean(article.slug)],['Excerpt',article.excerpt?.trim().length>=10],['Content',article.content?.trim().length>=3],['Category',Boolean(article.category)]];const save=async(status?:'draft'|'published')=>{if(required.some(([,complete])=>!complete)){setNotice('Complete the required fields before saving.');return}try{const coverUrl=article.coverImage?.url?.trim();const body={...article,coverImage:coverUrl?{url:coverUrl,alt:article.coverImage?.alt?.trim()||'Article cover image'}:undefined,status:status||article.status,readingTime:readingTime(article.content||'')};const saved=await api.saveArticle(body,id);setNotice(status==='published'?'Published.':'Saved.');if(!id)nav(`/studio/articles/${saved._id}/edit`,{replace:true})}catch(e){setNotice(e instanceof Error?e.message:'Could not save article.')}};if(loading)return <p>Loading story…</p>;return <div className="fade"><div className="editor-header"><div><div className="eyebrow">{id?'Edit article':'New article'}</div><h1 className="display" style={{fontSize:'2.5rem',margin:'4px 0'}}>Story editor</h1></div><div className="editor-actions"><button type="button" onClick={()=>save('draft')} className="btn btn-outline">Save draft</button><button type="button" onClick={()=>save('published')} className="btn">Publish</button></div></div><p className="editor-required-note"><strong>Required:</strong> Title, slug, excerpt, content, and category. Image fields are optional.</p><div className="editor-grid" style={{display:'grid',gap:22}}><div style={{display:'grid',gap:16,alignContent:'start'}}><label className="eyebrow">Title <span aria-hidden="true">*</span><input required className="studio-input" value={article.title} onChange={e=>{update('title',e.target.value);if(!id||article.status==='draft')update('slug',slugify(e.target.value))}}/></label><label className="eyebrow">Slug <span aria-hidden="true">*</span><input required className="studio-input" value={article.slug} onChange={e=>update('slug',slugify(e.target.value))}/></label><label className="eyebrow">Excerpt <span aria-hidden="true">*</span><textarea required rows={4} minLength={10} maxLength={500} className="studio-input" value={article.excerpt} onChange={e=>update('excerpt',e.target.value)}/></label><label className="eyebrow">Content <span aria-hidden="true">*</span> <span style={{color:'#6b6b67',fontWeight:400}}>(safe HTML supported)</span><textarea required rows={18} className="studio-input" value={article.content} onChange={e=>update('content',e.target.value)} style={{fontFamily:'monospace',fontSize:12}}/></label></div><aside className="editor-sidebar"><label className="eyebrow">Category <span aria-hidden="true">*</span><select required className="studio-input" value={article.category} onChange={e=>update('category',e.target.value)}>{['Design','Technology','Life','Creativity','Ideas','Culture'].map(x=><option key={x}>{x}</option>)}</select></label><label className="eyebrow">Tags <span style={{color:'#6b6b67',fontWeight:400}}>(optional, comma separated)</span><input className="studio-input" value={article.tags?.join(', ')||''} onChange={e=>update('tags',e.target.value.split(',').map(x=>x.trim()).filter(Boolean))}/></label><div className="editor-image-fields"><span className="eyebrow">Cover image <span style={{color:'#6b6b67',fontWeight:400}}>(optional)</span></span><label>Image URL<input type="url" className="studio-input" value={article.coverImage?.url||''} onChange={e=>update('coverImage',{...article.coverImage,url:e.target.value})}/></label><label>Alt text<input className="studio-input" value={article.coverImage?.alt||''} onChange={e=>update('coverImage',{...article.coverImage,alt:e.target.value})}/></label></div><label className="editor-check"><input type="checkbox" checked={article.featured||false} onChange={e=>update('featured',e.target.checked)}/> Featured story</label><p className="editor-reading-time">{readingTime(article.content||'')} min read — calculated automatically</p></aside></div>{notice&&<p role="status" className="editor-notice">{notice}</p>}</div>}
-export function StudioComments(){const [comments,setComments]=useState<Comment[]>([]);useEffect(()=>{api.adminComments().then(setComments).catch(()=>{})},[]);const status=async(id:string,next:string)=>{const result=await api.updateComment(id,next);setComments(comments.map(c=>c._id===id?result:c))};return <div className="fade"><div className="eyebrow">Community</div><h1 className="display" style={{fontSize:'3rem',margin:'5px 0 25px'}}>Comments</h1>{comments.length?comments.map(c=><div key={c._id} style={{padding:'17px 0',borderTop:'1px solid #d8d5ce'}}><div style={{display:'flex',justifyContent:'space-between',gap:15}}><strong>{c.name}</strong><select value={c.status} onChange={e=>status(c._id,e.target.value)} style={{fontSize:11}}><option value="visible">Visible</option><option value="pending">Pending</option><option value="hidden">Hidden</option></select></div><p style={{margin:'8px 0',lineHeight:1.6}}>{c.content}</p><small style={{color:'#6b6b67'}}>{new Date(c.createdAt).toLocaleString()}</small></div>):<p style={{color:'#6b6b67'}}>No comments to moderate.</p>}</div>}
-type LocalSettings={name:string;tagline:string;description:string;email:string;instagram:string;linkedin:string;comments:boolean}
-const defaultSettings:LocalSettings={name:'ESTHER',tagline:'Notes for a considered life',description:'A personal publication about design, culture, and the quiet work of making.',email:'hello@esther.local',instagram:'',linkedin:'',comments:true}
-export function StudioSettings(){const [settings,setSettings]=useState<LocalSettings>(()=>{try{return {...defaultSettings,...JSON.parse(localStorage.getItem('esther-publication-settings')||'{}')}}catch{return defaultSettings}});const [notice,setNotice]=useState('');const update=<K extends keyof LocalSettings>(key:K,value:LocalSettings[K])=>setSettings(current=>({...current,[key]:value}));const save=(event:React.FormEvent)=>{event.preventDefault();localStorage.setItem('esther-publication-settings',JSON.stringify(settings));setNotice('Settings saved on this device.');setTimeout(()=>setNotice(''),2200)};return <div className="fade"><div className="eyebrow">Publication</div><h1 className="display studio-settings-title">Settings</h1><form onSubmit={save} className="settings-form"><section><div className="eyebrow">Identity</div><label>Publication name<input className="studio-input" value={settings.name} onChange={e=>update('name',e.target.value)} required maxLength={60}/></label><label>Tagline<input className="studio-input" value={settings.tagline} onChange={e=>update('tagline',e.target.value)} required maxLength={120}/></label><label>About the publication<textarea className="studio-input" value={settings.description} onChange={e=>update('description',e.target.value)} rows={4} maxLength={500}/></label></section><section><div className="eyebrow">Reader experience</div><label className="settings-switch"><span><strong>Allow comments</strong><small>Let readers respond to new stories.</small></span><input type="checkbox" checked={settings.comments} onChange={e=>update('comments',e.target.checked)}/></label></section><section><div className="eyebrow">Contact and social</div><label>Email<input type="email" className="studio-input" value={settings.email} onChange={e=>update('email',e.target.value)}/></label><label>Instagram URL<input type="url" className="studio-input" value={settings.instagram} onChange={e=>update('instagram',e.target.value)} placeholder="https://instagram.com/..."/></label><label>LinkedIn URL<input type="url" className="studio-input" value={settings.linkedin} onChange={e=>update('linkedin',e.target.value)} placeholder="https://linkedin.com/in/..."/></label></section><button className="btn" type="submit">SAVE SETTINGS</button>{notice&&<p className="settings-notice" role="status">{notice}</p>}</form></div>}
+function useStudioAuth() {
+  const [ready, setReady] = useState(false);
+  const [email, setEmail] = useState("");
+  useEffect(() => {
+    const check = () =>
+      api
+        .adminMe()
+        .then((x) => setEmail(x.email))
+        .catch(() => setEmail(""))
+        .finally(() => setReady(true));
+    check();
+    window.addEventListener("esther-auth-change", check);
+    return () => window.removeEventListener("esther-auth-change", check);
+  }, []);
+  return { ready, email, setEmail };
+}
+function RichTextEditor({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (html: string) => void;
+}) {
+  const editor = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (editor.current && editor.current.innerHTML !== value)
+      editor.current.innerHTML = value;
+  }, [value]);
+  const update = () => onChange(editor.current?.innerHTML || "");
+  const format = (command: string, arg?: string) => {
+    editor.current?.focus();
+    document.execCommand(command, false, arg);
+    update();
+  };
+  const link = () => {
+    const url = window.prompt("Paste a link URL");
+    if (url) format("createLink", url);
+  };
+  return (
+    <div className="rich-editor">
+      <div
+        className="rich-editor__toolbar"
+        role="toolbar"
+        aria-label="Text formatting"
+      >
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => format("bold")}
+          title="Bold"
+        >
+          <strong>B</strong>
+          <span className="sr-only">Bold</span>
+        </button>
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => format("italic")}
+          title="Italic"
+        >
+          <em>I</em>
+          <span className="sr-only">Italic</span>
+        </button>
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => format("formatBlock", "h2")}
+          title="Heading"
+        >
+          H2<span className="sr-only">Heading</span>
+        </button>
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => format("formatBlock", "blockquote")}
+          title="Quote"
+        >
+          ❝<span className="sr-only">Quote</span>
+        </button>
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => format("insertUnorderedList")}
+          title="Bulleted list"
+        >
+          • List<span className="sr-only">Bulleted list</span>
+        </button>
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={link}
+          title="Add link"
+        >
+          Link<span className="sr-only">Add link</span>
+        </button>
+      </div>
+      <div
+        ref={editor}
+        className="rich-editor__canvas"
+        contentEditable
+        suppressContentEditableWarning
+        role="textbox"
+        aria-multiline="true"
+        onInput={update}
+      />
+    </div>
+  );
+}
+function RichTextEnhancer() {
+  useEffect(() => {
+    const mount = () => {
+      const source = document.querySelector<HTMLTextAreaElement>(
+        '.studio-content textarea[rows="18"]'
+      );
+      if (!source || source.dataset.richText) return;
+      source.dataset.richText = "true";
+      const host = document.createElement("div");
+      host.className = "rich-editor rich-editor--mounted";
+      const toolbar = document.createElement("div");
+      toolbar.className = "rich-editor__toolbar";
+      const canvas = document.createElement("div");
+      canvas.className = "rich-editor__canvas";
+      canvas.contentEditable = "true";
+      canvas.dir = "ltr";
+      canvas.spellcheck = true;
+      canvas.setAttribute(
+        "data-placeholder",
+        "My womannnnn, share what's on your mind..."
+      );
+      canvas.innerHTML = source.value;
+      const sync = () => {
+        const set = Object.getOwnPropertyDescriptor(
+          HTMLTextAreaElement.prototype,
+          "value"
+        )?.set;
+        set?.call(source, canvas.innerHTML);
+        source.dispatchEvent(new Event("input", { bubbles: true }));
+      };
+      const keepCaretAtEnd = () =>
+        requestAnimationFrame(() => {
+          canvas.focus();
+          const selection = window.getSelection();
+          selection?.selectAllChildren(canvas);
+          selection?.collapseToEnd();
+        });
+      [
+        ["B", "bold"],
+        ["I", "italic"],
+        ["H2", "formatBlock:h2"],
+        ["❝", "formatBlock:blockquote"],
+        ["• List", "insertUnorderedList"],
+        ["Link", "link"],
+      ].forEach(([label, action]) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = label;
+        button.onmousedown = (e) => e.preventDefault();
+        button.onclick = () => {
+          canvas.focus();
+          if (action === "link") {
+            const url = window.prompt("Paste a link URL");
+            if (url) document.execCommand("createLink", false, url);
+          } else {
+            const [command, arg] = action.split(":");
+            document.execCommand(command, false, arg);
+          }
+          sync();
+          keepCaretAtEnd();
+        };
+        toolbar.append(button);
+      });
+      canvas.oninput = () => {
+        sync();
+        keepCaretAtEnd();
+      };
+      host.append(toolbar, canvas);
+      source.before(host);
+      source.style.display = "none";
+    };
+    mount();
+    const observer = new MutationObserver(mount);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+  return null;
+}
+function PublishedLinkAction() {
+  useEffect(() => {
+    const mount = async () => {
+      const match = location.pathname.match(/^\/studio\/articles\/([^/]+)$/);
+      const target = document.querySelector(".article-detail-heading");
+      if (!match || !target || target.querySelector("[data-public-link]"))
+        return;
+      const article = (await api.adminArticles()).find(
+        (item) => item._id === match[1]
+      );
+      if (!article || article.status !== "published") return;
+      const action = document.createElement("a");
+      action.dataset.publicLink = "true";
+      action.className = "btn btn-outline studio-public-link";
+      action.href = `/blog/${article.slug}`;
+      action.target = "_blank";
+      action.rel = "noreferrer";
+      action.textContent = "Open public post";
+      target.append(action);
+      const copy = document.createElement("button");
+      copy.type = "button";
+      copy.className = "btn btn-outline studio-public-link";
+      copy.textContent = "Copy public link";
+      copy.onclick = async () => {
+        await navigator.clipboard.writeText(
+          new URL(action.href, location.origin).href
+        );
+        copy.textContent = "Link copied";
+        setTimeout(() => (copy.textContent = "Copy public link"), 1600);
+      };
+      target.append(copy);
+    };
+    void mount();
+    const observer = new MutationObserver(() => void mount());
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+  return null;
+}
+function StudioEditorExperience() {
+  useEffect(() => {
+    const enhance = () => {
+      const creating = location.pathname === "/studio/articles/new";
+      document.documentElement.classList.toggle("studio-composing", creating);
+      if (!creating) return;
+      const grid = document.querySelector(".editor-grid");
+      const actions = document.querySelector(".editor-actions");
+      if (grid && actions && !actions.dataset.bottom) {
+        actions.dataset.bottom = "true";
+        grid.after(actions);
+      }
+      const imageFields = document.querySelector(".editor-image-fields");
+      if (imageFields && !imageFields.querySelector("[data-cover-upload]")) {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/jpeg,image/png,image/webp,image/avif";
+        input.dataset.coverUpload = "true";
+        input.className = "studio-cover-upload";
+        const status = document.createElement("small");
+        status.className = "studio-upload-status";
+        input.onchange = async () => {
+          const file = input.files?.[0];
+          if (!file) return;
+          status.textContent = "Uploading image…";
+          try {
+            const result = await api.upload(file);
+            const url =
+              imageFields.querySelector<HTMLInputElement>('input[type="url"]');
+            if (!url) throw new Error("Cover image field was not found.");
+            Object.getOwnPropertyDescriptor(
+              HTMLInputElement.prototype,
+              "value"
+            )?.set?.call(url, result.url);
+            url.dispatchEvent(new Event("input", { bubbles: true }));
+            status.textContent = "Image uploaded.";
+          } catch (error) {
+            status.textContent =
+              error instanceof Error ? error.message : "Image upload failed.";
+          }
+        };
+        const label = document.createElement("label");
+        label.className = "studio-upload-label";
+        label.textContent = "Upload from device";
+        label.append(input, status);
+        imageFields.prepend(label);
+      }
+    };
+    enhance();
+    const observer = new MutationObserver(enhance);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      observer.disconnect();
+      document.documentElement.classList.remove("studio-composing");
+    };
+  }, []);
+  return null;
+}
+export function EditorEnhancements() {
+  useEffect(() => {
+    const mount = () => {
+      const toolbar = document.querySelector<HTMLElement>(
+        ".rich-editor--mounted .rich-editor__toolbar"
+      );
+      const canvas = document.querySelector<HTMLElement>(
+        ".rich-editor--mounted .rich-editor__canvas"
+      );
+      if (!toolbar || !canvas || toolbar.dataset.extended) return;
+      toolbar.dataset.extended = "true";
+      const sync = () => {
+        const source = document.querySelector<HTMLTextAreaElement>(
+          '.studio-content textarea[rows="18"]'
+        );
+        if (!source) return;
+        Object.getOwnPropertyDescriptor(
+          HTMLTextAreaElement.prototype,
+          "value"
+        )?.set?.call(source, canvas.innerHTML);
+        source.dispatchEvent(new Event("input", { bubbles: true }));
+      };
+      [
+        ["H3", "formatBlock:h3"],
+        ["1. List", "insertOrderedList"],
+        ["↶", "undo"],
+        ["↷", "redo"],
+        ["Clear", "removeFormat"],
+      ].forEach(([label, action]) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = label;
+        button.title = label;
+        button.onmousedown = (event) => event.preventDefault();
+        button.onclick = () => {
+          canvas.focus();
+          const [command, arg] = action.split(":");
+          document.execCommand(command, false, arg);
+          sync();
+        };
+        toolbar.append(button);
+      });
+    };
+    mount();
+    const observer = new MutationObserver(mount);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+  return null;
+}
+export function StudioDashboardGreeting() {
+  useEffect(() => {
+    const mount = () => {
+      if (location.pathname !== "/studio") return;
+      const heading = document.querySelector<HTMLElement>(
+        ".studio-content .fade > h1.display"
+      );
+      if (!heading) return;
+      const hour = new Date().getHours();
+      heading.textContent =
+        hour < 12
+          ? "Good morning."
+          : hour >= 12 && hour < 16
+          ? "Good afternoon."
+          : "Good evening.";
+    };
+    mount();
+    addEventListener("popstate", mount);
+    return () => removeEventListener("popstate", mount);
+  }, []);
+  return null;
+}
+export function ArticleDeleteAction() {
+  useEffect(() => {
+    const mount = () => {
+      const match = location.pathname.match(/^\/studio\/articles\/([^/]+)$/);
+      const heading = document.querySelector<HTMLElement>(
+        ".article-detail-heading"
+      );
+      if (!match || !heading || heading.querySelector("[data-delete-article]"))
+        return;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.deleteArticle = "true";
+      button.className = "btn btn-danger studio-delete-article";
+      button.textContent = "Delete";
+      button.onclick = async () => {
+        if (
+          !confirm(
+            "Delete this article permanently? Its comments and likes will also be removed."
+          )
+        )
+          return;
+        button.disabled = true;
+        button.textContent = "Deleting…";
+        try {
+          await api.deleteArticle(match[1]);
+          location.assign("/studio/articles");
+        } catch (error) {
+          button.disabled = false;
+          button.textContent =
+            error instanceof Error
+              ? error.message
+              : "Could not delete this article.";
+        }
+      };
+      heading.append(button);
+    };
+    mount();
+    const observer = new MutationObserver(mount);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+  return null;
+}
+const studioNav = [
+  { to: "/studio", label: "Home", icon: LayoutDashboard, end: true },
+  { to: "/studio/articles", label: "Articles", icon: FileText },
+  { to: "/studio/settings", label: "Settings", icon: Settings },
+];
+export function StudioLayout() {
+  const { ready, email, setEmail } = useStudioAuth();
+  const nav = useNavigate();
+  if (!ready) return <div className="studio-loading">Loading studio…</div>;
+  if (!email) return <NavigateLogin />;
+  const quit = async () => {
+    await api.logout();
+    setEmail("");
+    nav("/studio");
+  };
+  return (
+    <div className="studio-app">
+      <header className="studio-header">
+        <div className="studio-header__inner">
+          <Link className="display studio-wordmark" to="/studio">
+            ESTHER <span>STUDIO</span>
+          </Link>
+          <button onClick={quit} className="studio-logout">
+            <LogOut size={16} />
+            <span>Log out</span>
+          </button>
+        </div>
+      </header>
+      <div className="studio-shell">
+        <aside className="studio-nav">
+          <nav aria-label="Studio navigation">
+            {studioNav.map(({ to, label, icon: Icon, end }) => (
+              <NavLink
+                key={to}
+                end={end}
+                to={to}
+                className={({ isActive }) =>
+                  `studio-tab${isActive ? " studio-tab--active" : ""}`
+                }
+              >
+                <Icon strokeWidth={1.8} />
+                <span>{label}</span>
+              </NavLink>
+            ))}
+          </nav>
+        </aside>
+        <main className="studio-content">
+          <Outlet />
+          <RichTextEnhancer />
+          <PublishedLinkAction />
+          <StudioEditorExperience />
+        </main>
+      </div>
+    </div>
+  );
+}
+function NavigateLogin() {
+  return <Login />;
+}
+export function Login() {
+  const nav = useNavigate();
+  const [data, setData] = useState({
+    email: "bob.esther@gmail.com",
+    password: "bobandesther",
+  });
+  const [error, setError] = useState("");
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.login(data);
+      nav("/studio", { replace: true });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not sign in");
+    }
+  };
+  return (
+    <main
+      style={{
+        minHeight: "100vh",
+        display: "grid",
+        placeItems: "center",
+        padding: 20,
+        background: "#efebe3",
+      }}
+    >
+      <form
+        onSubmit={submit}
+        style={{
+          background: "#fff",
+          padding: 28,
+          width: "min(100%,400px)",
+          boxShadow: "0 12px 30px #0001",
+        }}
+      >
+        <Link
+          to="/"
+          className="display"
+          style={{ fontSize: "1.6rem", fontWeight: 800 }}
+        >
+          ESTHER
+        </Link>
+        <h1
+          className="display"
+          style={{ fontSize: "2.2rem", margin: "36px 0 8px" }}
+        >
+          Welcome back.
+        </h1>
+        <p style={{ fontSize: 13, color: "#6b6b67", marginBottom: 24 }}>
+          Sign in to the editorial studio.
+        </p>
+        <label className="eyebrow">
+          Email
+          <input
+            type="email"
+            required
+            className="studio-input"
+            style={{ marginTop: 7 }}
+            value={data.email}
+            onChange={(e) => setData({ ...data, email: e.target.value })}
+          />
+        </label>
+        <label className="eyebrow" style={{ display: "block", marginTop: 16 }}>
+          Password
+          <input
+            type="password"
+            required
+            className="studio-input"
+            style={{ marginTop: 7 }}
+            value={data.password}
+            onChange={(e) => setData({ ...data, password: e.target.value })}
+          />
+        </label>
+        {error && <p style={{ color: "#8b1e1e", fontSize: 12 }}>{error}</p>}
+        <button className="btn" style={{ width: "100%", marginTop: 24 }}>
+          SIGN IN
+        </button>
+        <p
+          style={{
+            fontSize: 11,
+            lineHeight: 1.6,
+            color: "#6b6b67",
+            margin: "16px 0 0",
+          }}
+        >
+          Development login: bob.esther@gmail.com · bobandesther
+        </p>
+      </form>
+    </main>
+  );
+}
+export function StudioDashboard() {
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
+  useEffect(() => {
+    api
+      .adminArticles()
+      .then(setArticles)
+      .catch(() => {});
+    api
+      .adminComments()
+      .then(setComments)
+      .catch(() => {});
+  }, []);
+  const published = articles.filter((a) => a.status === "published");
+  return (
+    <div className="fade">
+      <h1
+        className="display"
+        style={{ fontSize: "clamp(2.4rem,6vw,4rem)", margin: "6px 0 26px" }}
+      >
+        Good morning.
+      </h1>
+      <div
+        className="metrics"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2,1fr)",
+          gap: 10,
+        }}
+      >
+        {[
+          ["Articles", articles.length],
+          ["Published", published.length],
+          ["Drafts", articles.length - published.length],
+          ["Comments", comments.length],
+          ["Likes", articles.reduce((n, a) => n + a.likesCount, 0)],
+        ].map(([label, value]) => (
+          <div
+            key={String(label)}
+            style={{ background: "#fff", padding: "20px 15px" }}
+          >
+            <strong className="display" style={{ fontSize: "2rem" }}>
+              {value}
+            </strong>
+            <div className="eyebrow" style={{ color: "#6b6b67" }}>
+              {label}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: 42,
+        }}
+      >
+        <h2 className="display" style={{ fontSize: "1.8rem", margin: 0 }}>
+          Recent articles
+        </h2>
+        <Link
+          to="/studio/articles/new"
+          className="btn"
+          style={{ display: "flex", alignItems: "center", gap: 5 }}
+        >
+          <Plus size={15} /> NEW
+        </Link>
+      </div>
+      <div style={{ marginTop: 14, borderTop: "1px solid #d8d5ce" }}>
+        {articles.slice(0, 5).map((a) => (
+          <Link
+            key={a._id}
+            to={`/studio/articles/${a._id}`}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 12,
+              padding: "14px 0",
+              borderBottom: "1px solid #d8d5ce",
+            }}
+          >
+            <span>
+              {a.title}
+              <small style={{ display: "block", color: "#6b6b67" }}>
+                {a.status} · {a.readingTime} min read
+              </small>
+            </span>
+            <span style={{ fontSize: 11 }}>{a.likesCount} likes</span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+export function StudioArticles() {
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [query, setQuery] = useState("");
+  useEffect(() => {
+    api
+      .adminArticles()
+      .then(setArticles)
+      .catch(() => {});
+  }, []);
+  const visible = articles.filter((a) =>
+    a.title.toLowerCase().includes(query.toLowerCase())
+  );
+  return (
+    <div className="fade">
+      <div className="studio-page-heading">
+        <div>
+          <div className="eyebrow">Publishing desk</div>
+          <h1 className="display">Articles</h1>
+        </div>
+        <Link to="/studio/articles/new" className="btn">
+          <Plus size={15} /> NEW STORY
+        </Link>
+      </div>
+      <label className="studio-search">
+        <span className="eyebrow">Find a story</span>
+        <input
+          className="studio-input"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search your articles"
+        />
+      </label>
+      <div className="article-list">
+        {visible.length ? (
+          visible.map((a) => (
+            <Link
+              key={a._id}
+              to={`/studio/articles/${a._id}`}
+              className="article-row"
+            >
+              <div className="article-row__image">
+                {a.coverImage?.url && <img src={a.coverImage.url} alt="" />}
+              </div>
+              <div className="article-row__body">
+                <span className="eyebrow">{a.status}</span>
+                <strong className="display">{a.title}</strong>
+                <small>
+                  {a.category} · {a.readingTime} min read · Updated{" "}
+                  {new Date(a.updatedAt).toLocaleDateString()}
+                </small>
+                <span className="article-row__engagement">
+                  <Heart size={13} />
+                  {a.likesCount} <MessageSquare size={13} />
+                  {a.commentsCount}
+                </span>
+              </div>
+              <ChevronRight className="article-row__arrow" size={18} />
+            </Link>
+          ))
+        ) : (
+          <div className="studio-empty">No articles match that search.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+export function StudioArticleDetail() {
+  const { id = "" } = useParams();
+  const [article, setArticle] = useState<Article>();
+  const [comments, setComments] = useState<Comment[]>([]);
+  useEffect(() => {
+    api
+      .adminArticles()
+      .then((items) => setArticle(items.find((item) => item._id === id)))
+      .catch(() => {});
+    api
+      .adminComments()
+      .then((items) =>
+        setComments(items.filter((item) => item.articleId === id))
+      )
+      .catch(() => {});
+  }, [id]);
+  if (!article)
+    return <div className="studio-empty">Loading article details…</div>;
+  return (
+    <div className="fade">
+      <Link to="/studio/articles" className="studio-back">
+        ← All articles
+      </Link>
+      <div className="article-detail-heading">
+        <div>
+          <span className="eyebrow">
+            {article.status} · {article.category}
+          </span>
+          <h1 className="display">{article.title}</h1>
+        </div>
+        <Link to={`/studio/articles/${article._id}/edit`} className="btn">
+          <FilePenLine size={15} /> Edit
+        </Link>
+      </div>
+      <div className="article-insights">
+        <div>
+          <Heart size={17} />
+          <strong>{article.likesCount}</strong>
+          <span>Likes</span>
+        </div>
+        <div>
+          <MessageSquare size={17} />
+          <strong>{article.commentsCount}</strong>
+          <span>Comments</span>
+        </div>
+        <div>
+          <Eye size={17} />
+          <strong>{article.viewsCount || 0}</strong>
+          <span>Views</span>
+        </div>
+      </div>
+      <article className="studio-article-preview">
+        <div className="eyebrow">Article preview</div>
+        {article.coverImage?.url && (
+          <img
+            className="studio-article-preview__image"
+            src={article.coverImage.url}
+            alt={article.coverImage.alt || ""}
+          />
+        )}
+        <p className="studio-article-preview__excerpt">{article.excerpt}</p>
+        <div
+          className="article-copy"
+          dangerouslySetInnerHTML={{ __html: article.content }}
+        />
+      </article>
+      <section className="article-detail-section">
+        <div className="eyebrow">Comments</div>
+        <h2 className="display">Reader conversation</h2>
+        {comments.length ? (
+          comments.map((comment) => (
+            <div className="detail-comment" key={comment._id}>
+              <div>
+                <strong>{comment.name}</strong>
+                <small>
+                  {new Date(comment.createdAt).toLocaleDateString()} ·{" "}
+                  {comment.status}
+                </small>
+              </div>
+              <p>{comment.content}</p>
+            </div>
+          ))
+        ) : (
+          <div className="studio-empty">
+            There are no comments on this article yet.
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+const empty: Partial<Article> = {
+  title: "",
+  slug: "",
+  excerpt: "",
+  content: "",
+  category: "Ideas",
+  tags: [],
+  coverImage: { url: "", alt: "" },
+  featured: false,
+  status: "draft",
+  author: { name: "Elin Hayes" },
+};
+export function ArticleEditor() {
+  const { id } = useParams();
+  const nav = useNavigate();
+  const [article, setArticle] = useState<Partial<Article>>(empty);
+  const [loading, setLoading] = useState(Boolean(id));
+  const [notice, setNotice] = useState("");
+  useEffect(() => {
+    if (!id) return;
+    api
+      .adminArticles()
+      .then((all) => {
+        const a = all.find((x) => x._id === id);
+        if (a) setArticle(a);
+        else setNotice("Article was not found.");
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [id]);
+  const update = (key: string, value: unknown) =>
+    setArticle((p) => ({ ...p, [key]: value }));
+  const required = [
+    ["Title", article.title?.trim().length >= 3],
+    ["Slug", Boolean(article.slug)],
+    ["Excerpt", article.excerpt?.trim().length >= 10],
+    ["Content", article.content?.trim().length >= 3],
+    ["Category", Boolean(article.category)],
+  ];
+  const save = async (status?: "draft" | "published") => {
+    if (required.some(([, complete]) => !complete)) {
+      setNotice("Complete the required fields before saving.");
+      return;
+    }
+    try {
+      const coverUrl = article.coverImage?.url?.trim();
+      const body = {
+        ...article,
+        coverImage: coverUrl
+          ? {
+              url: coverUrl,
+              alt: article.coverImage?.alt?.trim() || "Article cover image",
+            }
+          : undefined,
+        status: status || article.status,
+        readingTime: readingTime(article.content || ""),
+      };
+      const saved = await api.saveArticle(body, id);
+      setNotice(status === "published" ? "Published." : "Saved.");
+      if (!id) nav(`/studio/articles/${saved._id}/edit`, { replace: true });
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "Could not save article.");
+    }
+  };
+  if (loading) return <p>Loading story…</p>;
+  return (
+    <div className="fade">
+      <div className="editor-header">
+        <div>
+          <div className="eyebrow">{id ? "Edit article" : "New article"}</div>
+          <h1
+            className="display"
+            style={{ fontSize: "2.5rem", margin: "4px 0" }}
+          >
+            Story editor
+          </h1>
+        </div>
+        <div className="editor-actions">
+          <button
+            type="button"
+            onClick={() => save("draft")}
+            className="btn btn-outline"
+          >
+            Save draft
+          </button>
+          <button
+            type="button"
+            onClick={() => save("published")}
+            className="btn"
+          >
+            Publish
+          </button>
+        </div>
+      </div>
+      <p className="editor-required-note">
+        <strong>Required:</strong> Title, slug, excerpt, content, and category.
+        Image fields are optional.
+      </p>
+      <div className="editor-grid" style={{ display: "grid", gap: 22 }}>
+        <div style={{ display: "grid", gap: 16, alignContent: "start" }}>
+          <label className="eyebrow">
+            Title <span aria-hidden="true">*</span>
+            <input
+              required
+              className="studio-input"
+              value={article.title}
+              onChange={(e) => {
+                update("title", e.target.value);
+                if (!id || article.status === "draft")
+                  update("slug", slugify(e.target.value));
+              }}
+            />
+          </label>
+          <label className="eyebrow">
+            Slug <span aria-hidden="true">*</span>
+            <input
+              required
+              className="studio-input"
+              value={article.slug}
+              onChange={(e) => update("slug", slugify(e.target.value))}
+            />
+          </label>
+          <label className="eyebrow">
+            Excerpt <span aria-hidden="true">*</span>
+            <textarea
+              required
+              rows={4}
+              minLength={10}
+              maxLength={500}
+              className="studio-input"
+              value={article.excerpt}
+              onChange={(e) => update("excerpt", e.target.value)}
+            />
+          </label>
+          <label className="eyebrow">
+            Content <span aria-hidden="true">*</span>{" "}
+            <span style={{ color: "#6b6b67", fontWeight: 400 }}>
+              (safe HTML supported)
+            </span>
+            <textarea
+              required
+              rows={18}
+              className="studio-input"
+              value={article.content}
+              onChange={(e) => update("content", e.target.value)}
+              style={{ fontFamily: "monospace", fontSize: 12 }}
+            />
+          </label>
+        </div>
+        <aside className="editor-sidebar">
+          <label className="eyebrow">
+            Category <span aria-hidden="true">*</span>
+            <select
+              required
+              className="studio-input"
+              value={article.category}
+              onChange={(e) => update("category", e.target.value)}
+            >
+              {[
+                "Design",
+                "Technology",
+                "Life",
+                "Creativity",
+                "Ideas",
+                "Culture",
+              ].map((x) => (
+                <option key={x}>{x}</option>
+              ))}
+            </select>
+          </label>
+          <label className="eyebrow">
+            Tags{" "}
+            <span style={{ color: "#6b6b67", fontWeight: 400 }}>
+              (optional, comma separated)
+            </span>
+            <input
+              className="studio-input"
+              value={article.tags?.join(", ") || ""}
+              onChange={(e) =>
+                update(
+                  "tags",
+                  e.target.value
+                    .split(",")
+                    .map((x) => x.trim())
+                    .filter(Boolean)
+                )
+              }
+            />
+          </label>
+          <div className="editor-image-fields">
+            <span className="eyebrow">
+              Cover image{" "}
+              <span style={{ color: "#6b6b67", fontWeight: 400 }}>
+                (optional)
+              </span>
+            </span>
+            <label>
+              Image URL
+              <input
+                type="url"
+                className="studio-input"
+                value={article.coverImage?.url || ""}
+                onChange={(e) =>
+                  update("coverImage", {
+                    ...article.coverImage,
+                    url: e.target.value,
+                  })
+                }
+              />
+            </label>
+            <label>
+              Alt text
+              <input
+                className="studio-input"
+                value={article.coverImage?.alt || ""}
+                onChange={(e) =>
+                  update("coverImage", {
+                    ...article.coverImage,
+                    alt: e.target.value,
+                  })
+                }
+              />
+            </label>
+          </div>
+          <label className="editor-check">
+            <input
+              type="checkbox"
+              checked={article.featured || false}
+              onChange={(e) => update("featured", e.target.checked)}
+            />{" "}
+            Featured story
+          </label>
+          <p className="editor-reading-time">
+            {readingTime(article.content || "")} min read — calculated
+            automatically
+          </p>
+        </aside>
+      </div>
+      {notice && (
+        <p role="status" className="editor-notice">
+          {notice}
+        </p>
+      )}
+    </div>
+  );
+}
+export function StudioComments() {
+  const [comments, setComments] = useState<Comment[]>([]);
+  useEffect(() => {
+    api
+      .adminComments()
+      .then(setComments)
+      .catch(() => {});
+  }, []);
+  const status = async (id: string, next: string) => {
+    const result = await api.updateComment(id, next);
+    setComments(comments.map((c) => (c._id === id ? result : c)));
+  };
+  return (
+    <div className="fade">
+      <div className="eyebrow">Community</div>
+      <h1
+        className="display"
+        style={{ fontSize: "3rem", margin: "5px 0 25px" }}
+      >
+        Comments
+      </h1>
+      {comments.length ? (
+        comments.map((c) => (
+          <div
+            key={c._id}
+            style={{ padding: "17px 0", borderTop: "1px solid #d8d5ce" }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 15,
+              }}
+            >
+              <strong>{c.name}</strong>
+              <select
+                value={c.status}
+                onChange={(e) => status(c._id, e.target.value)}
+                style={{ fontSize: 11 }}
+              >
+                <option value="visible">Visible</option>
+                <option value="pending">Pending</option>
+                <option value="hidden">Hidden</option>
+              </select>
+            </div>
+            <p style={{ margin: "8px 0", lineHeight: 1.6 }}>{c.content}</p>
+            <small style={{ color: "#6b6b67" }}>
+              {new Date(c.createdAt).toLocaleString()}
+            </small>
+          </div>
+        ))
+      ) : (
+        <p style={{ color: "#6b6b67" }}>No comments to moderate.</p>
+      )}
+    </div>
+  );
+}
+type LocalSettings = {
+  name: string;
+  tagline: string;
+  description: string;
+  email: string;
+  instagram: string;
+  linkedin: string;
+  comments: boolean;
+};
+const defaultSettings: LocalSettings = {
+  name: "ESTHER",
+  tagline: "The bleeding ink",
+  description:
+    "A personal publication about design, culture, and the quiet work of making.",
+  email: "hello@esther.local",
+  instagram: "",
+  linkedin: "",
+  comments: true,
+};
+export function StudioSettings() {
+  const [settings, setSettings] = useState<LocalSettings>(() => {
+    try {
+      return {
+        ...defaultSettings,
+        ...JSON.parse(
+          localStorage.getItem("esther-publication-settings") || "{}"
+        ),
+      };
+    } catch {
+      return defaultSettings;
+    }
+  });
+  const [notice, setNotice] = useState("");
+  const update = <K extends keyof LocalSettings>(
+    key: K,
+    value: LocalSettings[K]
+  ) => setSettings((current) => ({ ...current, [key]: value }));
+  const save = (event: React.FormEvent) => {
+    event.preventDefault();
+    localStorage.setItem(
+      "esther-publication-settings",
+      JSON.stringify(settings)
+    );
+    setNotice("Settings saved on this device.");
+    setTimeout(() => setNotice(""), 2200);
+  };
+  return (
+    <div className="fade">
+      <div className="eyebrow">Publication</div>
+      <h1 className="display studio-settings-title">Settings</h1>
+      <form onSubmit={save} className="settings-form">
+        <section>
+          <div className="eyebrow">Identity</div>
+          <label>
+            Publication name
+            <input
+              className="studio-input"
+              value={settings.name}
+              onChange={(e) => update("name", e.target.value)}
+              required
+              maxLength={60}
+            />
+          </label>
+          <label>
+            Tagline
+            <input
+              className="studio-input"
+              value={settings.tagline}
+              onChange={(e) => update("tagline", e.target.value)}
+              required
+              maxLength={120}
+            />
+          </label>
+          <label>
+            About the publication
+            <textarea
+              className="studio-input"
+              value={settings.description}
+              onChange={(e) => update("description", e.target.value)}
+              rows={4}
+              maxLength={500}
+            />
+          </label>
+        </section>
+        <section>
+          <div className="eyebrow">Reader experience</div>
+          <label className="settings-switch">
+            <span>
+              <strong>Allow comments</strong>
+              <small>Let readers respond to new stories.</small>
+            </span>
+            <input
+              type="checkbox"
+              checked={settings.comments}
+              onChange={(e) => update("comments", e.target.checked)}
+            />
+          </label>
+        </section>
+        <section>
+          <div className="eyebrow">Contact and social</div>
+          <label>
+            Email
+            <input
+              type="email"
+              className="studio-input"
+              value={settings.email}
+              onChange={(e) => update("email", e.target.value)}
+            />
+          </label>
+          <label>
+            Instagram URL
+            <input
+              type="url"
+              className="studio-input"
+              value={settings.instagram}
+              onChange={(e) => update("instagram", e.target.value)}
+              placeholder="https://instagram.com/..."
+            />
+          </label>
+          <label>
+            LinkedIn URL
+            <input
+              type="url"
+              className="studio-input"
+              value={settings.linkedin}
+              onChange={(e) => update("linkedin", e.target.value)}
+              placeholder="https://linkedin.com/in/..."
+            />
+          </label>
+        </section>
+        <button className="btn" type="submit">
+          SAVE SETTINGS
+        </button>
+        {notice && (
+          <p className="settings-notice" role="status">
+            {notice}
+          </p>
+        )}
+      </form>
+    </div>
+  );
+}
